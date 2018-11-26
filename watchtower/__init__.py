@@ -57,6 +57,10 @@ class CloudWatchLogHandler(handler_base_class):
     :param create_log_group:
         Create log group.  **True** by default.
     :type create_log_group: Boolean
+    :param use_boto_resources:
+        boto resources as well as client is available if false any supplied
+        session or profile will be ignored.  **True** by default.
+    :type use_boto_resources: Boolean
     """
     END = 1
     FLUSH = 2
@@ -76,7 +80,7 @@ class CloudWatchLogHandler(handler_base_class):
 
     def __init__(self, log_group=__name__, stream_name=None, use_queues=True, send_interval=60,
                  max_batch_size=1024*1024, max_batch_count=10000, boto3_session=None,
-                 boto3_profile_name=None, create_log_group=True, *args, **kwargs):
+                 boto3_profile_name=None, create_log_group=True, use_boto_resources=True, *args, **kwargs):
         handler_base_class.__init__(self, *args, **kwargs)
         self.log_group = log_group
         self.stream_name = stream_name
@@ -86,7 +90,10 @@ class CloudWatchLogHandler(handler_base_class):
         self.max_batch_count = max_batch_count
         self.queues, self.sequence_tokens = {}, {}
         self.threads = []
-        self.cwl_client = self._get_session(boto3_session, boto3_profile_name).client("logs")
+        if use_boto_resources:
+            self.cwl_client = self._get_session(boto3_session, boto3_profile_name).client("logs")
+        else:
+            self.cwl_client =  boto3.client('logs')
         if create_log_group:
             _idempotent_create(self.cwl_client.create_log_group, logGroupName=self.log_group)
         self.creating_log_stream, self.shutting_down = False, False
